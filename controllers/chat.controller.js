@@ -42,7 +42,8 @@ exports.createChatAndStream = async (req, res) => {
 
     let assistantResponse = "";
 
-    const model = require("../config/gemini");
+    const getModel = require("../config/gemini");
+    const model = getModel();
     const systemPrompt = require("../utils/systemPrompt");
 
     const formattedHistory = [
@@ -191,7 +192,8 @@ exports.continueChat = async (req, res) => {
       parts: [{ text: msg.content }],
     }));
 
-    const model = require("../config/gemini");
+    const getModel = require("../config/gemini");
+    const model = getModel();
 
     const systemPrompt = require("../utils/systemPrompt");
 

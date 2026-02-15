@@ -1,7 +1,9 @@
-const model = require("../config/gemini");
+const getModel = require("../config/gemini");
 
-const streamGeminiResponse = async (prompt, res) => {
-  const result = await model.generateContentStream(prompt);
+const streamGeminiResponse = async (payload, res) => {
+  const model = getModel();
+
+  const result = await model.generateContentStream(payload);
 
   for await (const chunk of result.stream) {
     const text = chunk.text();
@@ -12,8 +14,10 @@ const streamGeminiResponse = async (prompt, res) => {
 };
 
 const generateTitleFromPrompt = async (prompt) => {
+  const model = getModel();
+
   const result = await model.generateContent(
-    `Generate a short 4 word title for: ${prompt}`
+    `Generate a short 4 word title for: ${prompt}`,
   );
 
   return result.response.text().replace(/["']/g, "");
