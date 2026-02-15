@@ -1,10 +1,12 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-if (!process.env.GEMINI_API_KEYS) {
-  throw new Error("GEMINI_API_KEYS is not defined in environment variables");
+const rawKeys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY;
+
+if (!rawKeys) {
+  throw new Error("No Gemini API key configured");
 }
 
-const keys = process.env.GEMINI_API_KEYS.split(",");
+const keys = rawKeys.split(",").map((k) => k.trim());
 
 let currentIndex = 0;
 
