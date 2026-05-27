@@ -1,26 +1,26 @@
-const getModel = require("../config/gemini");
+const { withRetry } = require("../config/gemini");
 
 const streamGeminiResponse = async (payload, res) => {
-  const model = getModel();
+  await withRetry(async (model) => {
+    const result = await model.generateContentStream(payload);
 
-  const result = await model.generateContentStream(payload);
-
-  for await (const chunk of result.stream) {
-    const text = chunk.text();
-    res.write(text);
-  }
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      res.write(text);
+    }
+  });
 
   res.end();
 };
 
 const generateTitleFromPrompt = async (prompt) => {
-  const model = getModel();
+  return await withRetry(async (model) => {
+    const result = await model.generateContent(
+      `Generate a short 4 word title for: ${prompt}`,
+    );
 
-  const result = await model.generateContent(
-    `Generate a short 4 word title for: ${prompt}`,
-  );
-
-  return result.response.text().replace(/["']/g, "");
+    return result.response.text().replace(/["']/g, "");
+  });
 };
 
 module.exports = {

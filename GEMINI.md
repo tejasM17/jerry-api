@@ -18,15 +18,19 @@ The application leverages Google's Gemini Pro model to provide interactive chat 
 - **API Key**: A valid Google AI API Key from [Google AI Studio](https://aistudio.google.com/).
 - **SDK**: The project uses the `@google/generative-ai` package.
 - **Environment Variables**:
-  - `GEMINI_API_KEY`: Your secret API key.
+  - `GEMINI_API_KEYS`: A comma-separated list of API keys for rotation and failover.
+  - `GEMINI_API_KEY`: Fallback single API key if `GEMINI_API_KEYS` is not set.
+  - `GEMINI_MODEL`: (Optional) The model name to use (defaults to `gemini-1.5-flash`).
   - `NODE_ENV`: Set to `development` to load `.env.development`.
 
 ## 3. Architecture Details
 
-The integration follows a layered architecture to ensure separation of concerns:
+The integration follows a layered architecture with enhanced reliability:
 
-- **Configuration Layer (`config/gemini.js`)**: Initializes the Generative AI client and exports a model factory function.
-- **Service Layer (`services/gemini.service.js`)**: Contains reusable logic for interacting with the Gemini SDK, such as title generation and stream handling.
+- **Configuration Layer (`config/gemini.js`)**: 
+  - Supports multiple API keys via rotation.
+  - Exports a `withRetry` wrapper that automatically switches to the next available API key if a rate limit (429) or transient error (500, 503) occurs.
+- **Service Layer (`services/gemini.service.js`)**: Uses `withRetry` to ensure operations like title generation and streaming are resilient to key-specific issues.
 - **Controller Layer (`controllers/chat.controller.js`)**: Orchestrates the flow between the user, Gemini API, and Firebase:
   1. Authenticates the user via Firebase Auth middleware.
   2. Retrieves conversation history from Firestore.

@@ -40,10 +40,7 @@ exports.createChatAndStream = async (req, res) => {
     res.setHeader("Content-Type", "text/plain");
     res.setHeader("Transfer-Encoding", "chunked");
 
-    let assistantResponse = "";
-
-    const getModel = require("../config/gemini");
-    const model = getModel();
+    const { withRetry } = require("../config/gemini");
     const systemPrompt = require("../utils/systemPrompt");
 
     const formattedHistory = [
@@ -53,19 +50,23 @@ exports.createChatAndStream = async (req, res) => {
       },
     ];
 
-    const result = await model.generateContentStream({
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: systemPrompt }],
-      },
-      contents: formattedHistory,
-    });
+    let assistantResponse = "";
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
-      assistantResponse += text;
-      res.write(text);
-    }
+    await withRetry(async (model) => {
+      const result = await model.generateContentStream({
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: systemPrompt }],
+        },
+        contents: formattedHistory,
+      });
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        assistantResponse += text;
+        res.write(text);
+      }
+    });
 
     res.end();
 
@@ -209,29 +210,29 @@ exports.continueChat = async (req, res) => {
       parts: [{ text: msg.content }],
     }));
 
-    const getModel = require("../config/gemini");
-    const model = getModel();
-
+    const { withRetry } = require("../config/gemini");
     const systemPrompt = require("../utils/systemPrompt");
-
-    const result = await model.generateContentStream({
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: systemPrompt }],
-      },
-      contents: formattedHistory,
-    });
 
     res.setHeader("Content-Type", "text/plain");
     res.setHeader("Transfer-Encoding", "chunked");
 
     let assistantResponse = "";
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
-      assistantResponse += text;
-      res.write(text);
-    }
+    await withRetry(async (model) => {
+      const result = await model.generateContentStream({
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: systemPrompt }],
+        },
+        contents: formattedHistory,
+      });
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        assistantResponse += text;
+        res.write(text);
+      }
+    });
 
     res.end();
 

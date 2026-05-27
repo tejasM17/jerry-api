@@ -30,7 +30,9 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
    Create a `.env.development` file in the root directory and add your credentials:
    ```env
    PORT=5000
-   GEMINI_API_KEY=your_gemini_api_key
+   GEMINI_API_KEYS=key1,key2,key3 (Comma separated for rotation and failover)
+   # OR
+   GEMINI_API_KEY=your_single_key
    FRONTEND_URL=http://localhost:5173
 
    # Firebase Configuration
