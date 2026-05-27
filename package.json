@@ -5,9 +5,9 @@
   "license": "ISC",
   "author": "tejas",
   "type": "commonjs",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "set NODE_ENV=development&& nodemon server.js",
     "start": "node server.js"
   },
   "dependencies": {

@@ -113,15 +113,19 @@ exports.getUserChats = async (req, res) => {
 exports.getChatMessages = async (req, res) => {
   try {
     const { chatId } = req.params;
-    console.log("Fetching chatId:", chatId);
+    const userId = req.user.uid;
+
+    // Verify ownership
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists || chatDoc.data().userId !== userId) {
+      return res.status(403).json({ message: "Unauthorized to access this chat" });
+    }
 
     const snapshot = await db
       .collection("messages")
       .where("chatId", "==", chatId)
       .orderBy("createdAt", "asc")
       .get();
-
-    console.log("Documents found:", snapshot.size);
 
     const messages = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -130,7 +134,6 @@ exports.getChatMessages = async (req, res) => {
 
     res.json(messages);
   } catch (error) {
-    console.error("getChatMessages ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -138,6 +141,13 @@ exports.getChatMessages = async (req, res) => {
 exports.deleteChat = async (req, res) => {
   try {
     const { chatId } = req.params;
+    const userId = req.user.uid;
+
+    // Verify ownership
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists || chatDoc.data().userId !== userId) {
+      return res.status(403).json({ message: "Unauthorized to delete this chat" });
+    }
 
     // Delete messages
     const messagesSnapshot = await db
@@ -165,13 +175,20 @@ exports.continueChat = async (req, res) => {
   try {
     const { chatId } = req.params;
     const { prompt } = req.body;
-
     const userId = req.user.uid;
+
     if (!chatId) return res.status(400).json({ message: "Chat ID required" });
+
+    // Verify ownership
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists || chatDoc.data().userId !== userId) {
+      return res.status(403).json({ message: "Unauthorized to continue this chat" });
+    }
 
     // 1️⃣ Save user message
     await db.collection("messages").add({
       chatId,
+      userId,
       role: "user",
       content: prompt,
       createdAt: new Date(),
