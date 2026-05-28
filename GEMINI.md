@@ -6,12 +6,14 @@ This document outlines how the Gemini API is integrated into the Jerry API backe
 
 ## 1. Overview of AI Features
 
-The application leverages Google's Gemini Pro model to provide interactive chat capabilities and automated metadata generation:
+The application leverages Google's Gemini 2.0 Flash model to provide interactive chat capabilities and automated metadata generation:
 
 - **Interactive Chat**: Real-time streaming of AI responses using `generateContentStream`.
+- **Multimodal Support**: Support for image and document uploads, stored in MongoDB GridFS and processed by Gemini 2.0 Flash as base64 `inlineData`.
+- **Message Editing & Branching**: Allows users to edit previous messages, which truncates subsequent history and generates a fresh AI response from that point.
 - **Contextual Memory**: Integration with Firebase Firestore to maintain and provide chat history for multi-turn conversations.
 - **Auto-Title Generation**: Automatically generates a concise 4-word title for each new chat session based on the initial user prompt.
-- **System Instructions**: Customizable AI personality and behavior via a centralized system prompt.
+- **File Streaming**: Dedicated endpoint to stream files from MongoDB GridFS back to the frontend.
 
 ## 2. Prerequisites
 
@@ -19,63 +21,49 @@ The application leverages Google's Gemini Pro model to provide interactive chat 
 - **SDK**: The project uses the `@google/generative-ai` package.
 - **Environment Variables**:
   - `GEMINI_API_KEYS`: A comma-separated list of API keys for rotation and failover.
-  - `GEMINI_API_KEY`: Fallback single API key if `GEMINI_API_KEYS` is not set.
-  - `GEMINI_MODEL`: (Optional) The model name to use (defaults to `gemini-1.5-flash`).
+  - `MONGODB_URI`: The connection string for your MongoDB database.
   - `NODE_ENV`: Set to `development` to load `.env.development`.
 
 ## 3. Architecture Details
 
 The integration follows a layered architecture with enhanced reliability:
 
-- **Configuration Layer (`config/gemini.js`)**: 
-  - Supports multiple API keys via rotation.
-  - Exports a `withRetry` wrapper that automatically switches to the next available API key if a rate limit (429) or transient error (500, 503) occurs.
-- **Service Layer (`services/gemini.service.js`)**: Uses `withRetry` to ensure operations like title generation and streaming are resilient to key-specific issues.
-- **Controller Layer (`controllers/chat.controller.js`)**: Orchestrates the flow between the user, Gemini API, and Firebase:
-  1. Authenticates the user via Firebase Auth middleware.
-  2. Retrieves conversation history from Firestore.
-  3. Formats history for Gemini (`user`/`model` roles).
-  4. Streams the Gemini response to the client.
-  5. Persists both user and assistant messages back to Firestore.
-- **Utility Layer (`utils/systemPrompt.js`)**: Defines the global instructions provided to the model at the start of every session.
+- **Configuration Layer (`config/db.js` & `config/firebase.js`)**: 
+  - MongoDB: Handles connection and GridFS initialization for file storage.
+  - Gemini: Supports multiple API keys via rotation and retry logic.
+  - Firebase: Initializes Firestore for chat and message storage.
+- **Middleware Layer (`middleware/upload.middleware.js`)**: Uses `multer` with memory storage to handle file uploads before piping to GridFS.
+- **Service Layer (`services/gemini.service.js`)**: Uses `withRetry` to ensure operations like title generation and streaming are resilient.
+- **Helper Layer (`utils/geminiHelper.js`)**: Fetches files from GridFS and converts them to base64 `inlineData` for the Gemini SDK.
+- **Controller Layer (`controllers/chat.controller.js`)**: Orchestrates the flow:
+  1. **Upload**: Saves files to MongoDB GridFS and returns file IDs.
+  2. **Stream**: Streams files from GridFS to the frontend for UI display.
+  3. **Chat**: Fetches attachments from GridFS, converts to base64, and formats into multimodal parts.
+  4. **Edit**: Truncates history by deleting messages after the edited point and re-triggers AI generation.
+- **Utility Layer (`utils/systemPrompt.js`)**: Defines the global instructions.
 
-## 4. Example Usage
+## 4. API Reference Summary
 
-### Initializing the Model
+### Auth (`/api/auth`)
+- `POST /register`: `{ username, email, password }` -> Returns user profile & token.
+- `POST /login`: `{ email, password }` -> Returns user profile & token.
 
-```javascript
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-```
-
-### Streaming a Conversation
-
-```javascript
-const result = await model.generateContentStream({
-  systemInstruction: {
-    role: "system",
-    parts: [{ text: systemPrompt }],
-  },
-  contents: [
-    { role: "user", parts: [{ text: "Hello!" }] },
-    { role: "model", parts: [{ text: "Hi there! How can I help you today?" }] },
-    { role: "user", parts: [{ text: "Tell me a joke." }] },
-  ],
-});
-
-for await (const chunk of result.stream) {
-  const text = chunk.text();
-  process.stdout.write(text); // Or res.write(text) in Express
-}
-```
+### Chat (`/api/chat`)
+*All require `Authorization: Bearer <ID_TOKEN>`*
+- `POST /new`: `{ prompt, attachments? }` -> Streams AI response. Returns `X-Chat-Id` header.
+- `GET /all`: Returns user's chat list.
+- `GET /:chatId`: Returns message history for a chat.
+- `DELETE /:chatId`: Deletes chat session.
+- `POST /:chatId/continue`: `{ prompt, attachments? }` -> Streams AI response.
+- `POST /upload`: Multipart form-data (`file`) -> Returns `{ url, mimeType, name }`.
+- `PUT /:chatId/edit/:messageId`: `{ prompt, attachments? }` -> Truncates history and streams new response.
 
 ## 5. Best Practices
 
 ### Error Handling
 - **Try-Catch Blocks**: All Gemini calls are wrapped in `try-catch` blocks within the controller to handle network timeouts or API errors gracefully.
 - **Validation**: Prompts are validated to ensure they are not empty before being sent to the API.
+- **State management**:always handel loading state error handling data fetching.
 
 ### Rate Limits & Performance
 - **Streaming**: Responses are streamed directly to the frontend to reduce perceived latency and avoid timeout issues with large responses.

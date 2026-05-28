@@ -4,13 +4,19 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
 
 ## Features
 - AI-powered chat using **Gemini 2.0 Flash**.
-- Authentication managed via **Firebase**.
-- Real-time streaming responses.
-- Chat history stored in **Firebase Firestore**.
+- **Multimodal Support**: Upload images and documents to chat.
+- **Auto-Title Generation**: Automatically generates a concise 4-word title for each new chat session.
+- **Message Editing**: Edit previous prompts and re-generate AI responses (with history branching).
+- **Reliability & Rotation**: Supports multiple Gemini API keys with automatic rotation and retry logic for high availability.
+- **System Instructions**: Customizable AI personality and behavior via a centralized system prompt.
+- **Authentication**: Managed via **Firebase Auth**.
+- **Streaming Responses**: Real-time text streaming for better UX.
+- **Cloud Storage**: Chat history in **Firestore** and files in **MongoDB GridFS**.
 
 ## Prerequisites
 - [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- [Firebase Project](https://console.firebase.google.com/)
+- [Firebase Project](https://console.firebase.google.com/) (for Firestore and Auth)
+- [MongoDB](https://www.mongodb.com/) (for GridFS file storage)
 - [Gemini API Key](https://aistudio.google.com/app/apikey)
 
 ## Setup Instructions
@@ -34,6 +40,7 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
    # OR
    GEMINI_API_KEY=your_single_key
    FRONTEND_URL=http://localhost:5173
+   MONGODB_URI=mongodb://localhost:27017/jerry-ai
 
    # Firebase Configuration
    FIREBASE_API_KEY=your_firebase_api_key
@@ -55,19 +62,130 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
 ## API Endpoints
 
 ### Auth
-- `POST /api/auth/register` - Register a new user.
-- `POST /api/auth/login` - Login endpoint (Note: Login is typically handled on the frontend via Firebase SDK).
+All auth endpoints are prefixed with `/api/auth`.
+
+- **POST `/register`** - Register a new user.
+  - **Body:**
+    ```json
+    {
+      "username": "johndoe",
+      "email": "john@example.com",
+      "password": "securepassword"
+    }
+    ```
+  - **Response:** (201 Created) Returns user details and token.
+
+- **POST `/login`** - Login a user.
+  - **Body:**
+    ```json
+    {
+      "email": "john@example.com",
+      "password": "securepassword"
+    }
+    ```
+  - **Response:** (200 OK) Returns user details and token.
 
 ### Chat
-- `POST /api/chat/new` - Start a new chat and stream response.
-- `GET /api/chat/all` - Get all chats for a user.
-- `GET /api/chat/:chatId` - Get messages for a specific chat.
-- `DELETE /api/chat/:chatId` - Delete a chat.
-- `POST /api/chat/:chatId/continue` - Continue an existing chat.
+All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Token** in the `Authorization` header.
+
+- **POST `/new`** - Start a new chat and stream response.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Body:**
+    ```json
+    {
+      "prompt": "Hello, how are you?",
+      "attachments": [
+        { "fileId": "65f...", "mimeType": "image/jpeg" }
+      ]
+    }
+    ```
+  - **Response:** (200 OK) Streamed text chunks. 
+  - **Headers (Response):** Returns `X-Chat-Id` which should be used for subsequent `/continue` or `/edit` calls.
+
+- **POST `/upload`** - Upload a file to MongoDB GridFS.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Body:** `multipart/form-data` with key `file`.
+  - **Limit:** Max file size 10MB.
+  - **Response:** (200 OK)
+    ```json
+    {
+      "fileId": "65f...",
+      "url": "/api/chat/files/65f...",
+      "mimeType": "image/png",
+      "name": "example.png"
+    }
+    ```
+
+- **GET `/files/:fileId`** - Stream a file from MongoDB GridFS.
+  - **Response:** (200 OK) File stream (image, pdf, etc.).
+
+- **PUT `/:chatId/edit/:messageId`** - Edit a message and re-generate AI response.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Body:**
+    ```json
+    {
+      "prompt": "Updated prompt",
+      "attachments": []
+    }
+    ```
+  - **Response:** (200 OK) Streamed text chunks. Note: Deletes all messages in the chat that occurred after the edited message.
+
+- **GET `/all`** - Get all chats for the authenticated user.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Response:** (200 OK)
+    ```json
+    [
+      {
+        "id": "chat_id_1",
+        "title": "Greeting",
+        "createdAt": "...",
+        "updatedAt": "..."
+      }
+    ]
+    ```
+
+- **GET `/:chatId`** - Get messages for a specific chat.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Response:** (200 OK)
+    ```json
+    [
+      {
+        "id": "msg_id_1",
+        "role": "user",
+        "content": "Hello",
+        "attachments": [],
+        "createdAt": "..."
+      },
+      {
+        "id": "msg_id_2",
+        "role": "assistant",
+        "content": "Hi there!",
+        "createdAt": "..."
+      }
+    ]
+    ```
+
+- **DELETE `/:chatId`** - Delete a chat and its history.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Response:** (200 OK) `{ "message": "Chat deleted" }`
+
+- **POST `/:chatId/continue`** - Continue an existing chat.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Body:**
+    ```json
+    {
+      "prompt": "Tell me more.",
+      "attachments": []
+    }
+    ```
+  - **Response:** (200 OK) Streamed text chunks.
 
 ## Technologies Used
 - Express.js
-- Firebase Admin SDK
+- MongoDB & GridFS
+- Firebase Admin SDK (Firestore & Auth)
 - Google Generative AI (@google/generative-ai)
+- Multer (File Uploads)
+- Mongoose
 - Cors
 - Dotenv

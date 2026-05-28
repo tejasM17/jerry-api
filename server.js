@@ -5,11 +5,15 @@ require("dotenv").config({ path: path.resolve(process.cwd(), envFile) });
 
 const express = require("express");
 const cors = require("cors");
+const { connectDB } = require("./config/db");
 
 const chatRoutes = require("./routes/chat.routes");
 const authRoutes = require("./routes/auth.routes");
 
 const app = express();
+
+// Connect to Database
+connectDB();
 
 const allowedOrigins = [
   "http://localhost:5173",
