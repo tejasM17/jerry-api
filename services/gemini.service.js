@@ -16,7 +16,7 @@ const streamGeminiResponse = async (payload, res) => {
 const generateTitleFromPrompt = async (prompt) => {
   return await withRetry(async (model) => {
     const result = await model.generateContent(
-      `Generate a short 4 word title for: ${prompt}`,
+      `generate only with in 4 word title for: ${prompt}`,
     );
 
     return result.response.text().replace(/["']/g, "");

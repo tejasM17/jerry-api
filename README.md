@@ -3,7 +3,7 @@
 This is the backend server for Jerry AI, a chatbot powered by Google Gemini and Firebase.
 
 ## Features
-- AI-powered chat using **Gemini 2.0 Flash**.
+- AI-powered chat using **Gemini 2.5 Flash**.
 - **Multimodal Support**: Upload images and documents to chat.
 - **Auto-Title Generation**: Automatically generates a concise 4-word title for each new chat session.
 - **Message Editing**: Edit previous prompts and re-generate AI responses (with history branching).
@@ -39,6 +39,7 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
    GEMINI_API_KEYS=key1,key2,key3 (Comma separated for rotation and failover)
    # OR
    GEMINI_API_KEY=your_single_key
+   GEMINI_MODEL=gemini-2.5-flash
    FRONTEND_URL=http://localhost:5173
    MONGODB_URI=mongodb://localhost:27017/jerry-ai
 
@@ -65,28 +66,15 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
 All auth endpoints are prefixed with `/api/auth`.
 
 - **POST `/register`** - Register a new user.
-  - **Body:**
-    ```json
-    {
-      "username": "johndoe",
-      "email": "john@example.com",
-      "password": "securepassword"
-    }
-    ```
+  - **Body:** `{ username, email, password }`
   - **Response:** (201 Created) Returns user details and token.
 
 - **POST `/login`** - Login a user.
-  - **Body:**
-    ```json
-    {
-      "email": "john@example.com",
-      "password": "securepassword"
-    }
-    ```
+  - **Body:** `{ email, password }`
   - **Response:** (200 OK) Returns user details and token.
 
 ### Chat
-All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Token** in the `Authorization` header.
+All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Token** in the `Authorization` header (except for file streaming).
 
 - **POST `/new`** - Start a new chat and stream response.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
@@ -100,7 +88,7 @@ All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Tok
     }
     ```
   - **Response:** (200 OK) Streamed text chunks. 
-  - **Headers (Response):** Returns `X-Chat-Id` which should be used for subsequent `/continue` or `/edit` calls.
+  - **Headers (Response):** Returns `X-Chat-Id` header for the new session.
 
 - **POST `/upload`** - Upload a file to MongoDB GridFS.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
@@ -117,53 +105,20 @@ All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Tok
     ```
 
 - **GET `/files/:fileId`** - Stream a file from MongoDB GridFS.
-  - **Response:** (200 OK) File stream (image, pdf, etc.).
+  - **Response:** (200 OK) File stream.
 
 - **PUT `/:chatId/edit/:messageId`** - Edit a message and re-generate AI response.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Body:**
-    ```json
-    {
-      "prompt": "Updated prompt",
-      "attachments": []
-    }
-    ```
+  - **Body:** `{ prompt, attachments }`
   - **Response:** (200 OK) Streamed text chunks. Note: Deletes all messages in the chat that occurred after the edited message.
 
 - **GET `/all`** - Get all chats for the authenticated user.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Response:** (200 OK)
-    ```json
-    [
-      {
-        "id": "chat_id_1",
-        "title": "Greeting",
-        "createdAt": "...",
-        "updatedAt": "..."
-      }
-    ]
-    ```
+  - **Response:** (200 OK) Returns array of chat objects.
 
 - **GET `/:chatId`** - Get messages for a specific chat.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Response:** (200 OK)
-    ```json
-    [
-      {
-        "id": "msg_id_1",
-        "role": "user",
-        "content": "Hello",
-        "attachments": [],
-        "createdAt": "..."
-      },
-      {
-        "id": "msg_id_2",
-        "role": "assistant",
-        "content": "Hi there!",
-        "createdAt": "..."
-      }
-    ]
-    ```
+  - **Response:** (200 OK) Returns array of message objects.
 
 - **DELETE `/:chatId`** - Delete a chat and its history.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
@@ -171,21 +126,14 @@ All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Tok
 
 - **POST `/:chatId/continue`** - Continue an existing chat.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Body:**
-    ```json
-    {
-      "prompt": "Tell me more.",
-      "attachments": []
-    }
-    ```
+  - **Body:** `{ prompt, attachments }`
   - **Response:** (200 OK) Streamed text chunks.
 
 ## Technologies Used
 - Express.js
-- MongoDB & GridFS
+- MongoDB & GridFS (via Mongoose)
 - Firebase Admin SDK (Firestore & Auth)
 - Google Generative AI (@google/generative-ai)
 - Multer (File Uploads)
-- Mongoose
 - Cors
 - Dotenv
