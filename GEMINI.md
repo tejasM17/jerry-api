@@ -9,7 +9,7 @@ This document outlines how the Gemini API is integrated into the Jerry API backe
 The application leverages Google's Gemini 2.5 Flash model to provide interactive chat capabilities and automated metadata generation:
 
 - **Interactive Chat**: Real-time streaming of AI responses using `generateContentStream`.
-- **Multimodal Support**: Support for image and document uploads, stored in MongoDB GridFS and processed by Gemini 2.0 Flash as base64 `inlineData`.
+- **Multimodal Support**: Support for image and document uploads, stored in MongoDB GridFS and processed by Gemini 2.5 Flash as base64 `inlineData`.
 - **Message Editing & Branching**: Allows users to edit previous messages, which truncates subsequent history and generates a fresh AI response from that point.
 - **Contextual Memory**: Integration with Firebase Firestore to maintain and provide chat history for multi-turn conversations.
 - **Auto-Title Generation**: Automatically generates a concise 4-word title for each new chat session based on the initial user prompt.
@@ -21,6 +21,8 @@ The application leverages Google's Gemini 2.5 Flash model to provide interactive
 - **SDK**: The project uses the `@google/generative-ai` package.
 - **Environment Variables**:
   - `GEMINI_API_KEYS`: A comma-separated list of API keys for rotation and failover.
+  - `GEMINI_API_KEY`: Single API key (fallback if `GEMINI_API_KEYS` is not set).
+  - `GEMINI_MODEL`: The Gemini model to use (defaults to `gemini-2.5-flash`).
   - `MONGODB_URI`: The connection string for your MongoDB database.
   - `NODE_ENV`: Set to `development` to load `.env.development`.
 
@@ -28,7 +30,7 @@ The application leverages Google's Gemini 2.5 Flash model to provide interactive
 
 The integration follows a layered architecture with enhanced reliability:
 
-- **Configuration Layer (`config/db.js` & `config/firebase.js`)**: 
+- **Configuration Layer (`config/db.js`, `config/firebase.js`, `config/gemini.js`)**: 
   - MongoDB: Handles connection and GridFS initialization for file storage.
   - Gemini: Supports multiple API keys via rotation and retry logic.
   - Firebase: Initializes Firestore for chat and message storage.
@@ -49,23 +51,26 @@ The integration follows a layered architecture with enhanced reliability:
 - `POST /login`: `{ email, password }` -> Returns user profile & token.
 
 ### Chat (`/api/chat`)
-*All require `Authorization: Bearer <ID_TOKEN>`*
+*All require `Authorization: Bearer <ID_TOKEN>` except for file streaming*
 - `POST /new`: `{ prompt, attachments? }` -> Streams AI response. Returns `X-Chat-Id` header.
 - `GET /all`: Returns user's chat list.
 - `GET /:chatId`: Returns message history for a chat.
-- `DELETE /:chatId`: Deletes chat session.
-- `POST /:chatId/continue`: `{ prompt, attachments? }` -> Streams AI response.
-- `POST /upload`: Multipart form-data (`file`) -> Returns `{ url, mimeType, name }`.
+- `DELETE /:chatId`: Deletes chat session and associated messages.
+- `POST /:chatId/continue`: `{ prompt, attachments? }` -> Streams AI response for existing chat.
+- `POST /upload`: Multipart form-data (`file`) -> Returns `{ fileId, url, mimeType, name }`.
+- `GET /files/:fileId`: Streams the file directly from GridFS.
 - `PUT /:chatId/edit/:messageId`: `{ prompt, attachments? }` -> Truncates history and streams new response.
 
 ## 5. Best Practices
 
 ### Error Handling
 - **Try-Catch Blocks**: All Gemini calls are wrapped in `try-catch` blocks within the controller to handle network timeouts or API errors gracefully.
+- **Retry Logic**: The `withRetry` utility in `config/gemini.js` automatically retries requests using a different API key if a rate limit (429) or transient error (500, 503) occurs.
 - **Validation**: Prompts are validated to ensure they are not empty before being sent to the API.
-- **State management**:always handel loading state error handling data fetching.
+- **State management**: Frontend should handle loading states and error messages during data fetching and streaming.
 
 ### Rate Limits & Performance
+- **API Key Rotation**: Rotates through multiple API keys to increase aggregate rate limits and ensure high availability.
 - **Streaming**: Responses are streamed directly to the frontend to reduce perceived latency and avoid timeout issues with large responses.
 - **Efficient History**: Only relevant messages from the current `chatId` are retrieved from Firestore to keep the context window efficient.
 - **Environment Management**: Uses `dotenv` with environment-specific files (`.env.development`) to manage credentials safely.
