@@ -450,3 +450,69 @@ exports.editMessage = async (req, res) => {
   }
 };
 
+exports.getRecentChats = async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+
+    const snapshot = await db
+      .collection("chats")
+      .where("userId", "==", userId)
+      .orderBy("updatedAt", "desc")
+      .limit(limit)
+      .get();
+
+    const chats = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title,
+        updatedAt: data.updatedAt,
+      };
+    });
+
+    res.json(chats);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.searchChats = async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const { q } = req.query;
+
+    if (!q || !q.trim()) {
+      return res.status(400).json({ message: "Search query required" });
+    }
+
+    const query = q.trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+
+    const snapshot = await db
+      .collection("chats")
+      .where("userId", "==", userId)
+      .orderBy("updatedAt", "desc")
+      .limit(200)
+      .get();
+
+    const chats = snapshot.docs
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          updatedAt: data.updatedAt,
+        };
+      })
+      .filter((chat) => chat.title && chat.title.toLowerCase().includes(query))
+      .slice(0, limit);
+
+    res.json(chats);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
