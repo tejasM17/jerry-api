@@ -11,10 +11,12 @@ const {
   uploadFile,
   editMessage,
   getFile,
+  searchChatSessions,
 } = require("../controllers/chat.controller");
 
 router.post("/new", protect, createChatAndStream);
 router.get("/all", protect, getUserChats);
+router.get("/sessions", protect, searchChatSessions);
 router.get("/:chatId", protect, getChatMessages);
 router.delete("/:chatId", protect, deleteChat);
 router.post("/:chatId/continue", protect, continueChat);

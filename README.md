@@ -116,6 +116,11 @@ All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Tok
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
   - **Response:** (200 OK) Returns array of chat objects.
 
+- **GET `/sessions`** - Search through past chat sessions for a specific user.
+  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
+  - **Query Parameters:** `userId` (required), `query` (optional - filter by title)
+  - **Response:** (200 OK) Returns a filtered array of chat sessions.
+
 - **GET `/:chatId`** - Get messages for a specific chat.
   - **Headers:** `Authorization: Bearer <ID_TOKEN>`
   - **Response:** (200 OK) Returns array of message objects.

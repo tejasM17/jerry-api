@@ -450,3 +450,51 @@ exports.editMessage = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/chat/sessions
+ * Search through past chat sessions for a specific user.
+ */
+exports.searchChatSessions = async (req, res) => {
+  try {
+    const { userId, query } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId query parameter is required" });
+    }
+
+    // Fetch chats for the user, ordered by updatedAt descending
+    const snapshot = await db
+      .collection("chats")
+      .where("userId", "==", userId)
+      .orderBy("updatedAt", "desc")
+      .get();
+
+    let sessions = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      // Firestore timestamps need to be converted to JS Date/ISO string
+      const updatedAt = data.updatedAt && data.updatedAt.toDate 
+        ? data.updatedAt.toDate().toISOString() 
+        : data.updatedAt;
+
+      return {
+        chatId: doc.id,
+        title: data.title || "Untitled Chat",
+        updatedAt: updatedAt,
+      };
+    });
+
+    // Case-insensitive sub-string check if query is provided
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      sessions = sessions.filter((session) =>
+        session.title.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    res.json(sessions);
+  } catch (error) {
+    console.error("Error searching chat sessions:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+

@@ -54,6 +54,7 @@ The integration follows a layered architecture with enhanced reliability:
 *All require `Authorization: Bearer <ID_TOKEN>` except for file streaming*
 - `POST /new`: `{ prompt, attachments? }` -> Streams AI response. Returns `X-Chat-Id` header.
 - `GET /all`: Returns user's chat list.
+- `GET /sessions?userId=<UID>&query=<text>`: Search through past chat sessions for a specific user.
 - `GET /:chatId`: Returns message history for a chat.
 - `DELETE /:chatId`: Deletes chat session and associated messages.
 - `POST /:chatId/continue`: `{ prompt, attachments? }` -> Streams AI response for existing chat.
