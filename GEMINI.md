@@ -6,7 +6,7 @@ This document outlines how the Gemini API is integrated into the Jerry API backe
 
 ## 1. Overview of AI Features
 
-The application leverages Google's Gemini 2.0 Flash model to provide interactive chat capabilities and automated metadata generation:
+The application leverages Google's Gemini 2.5 Flash model to provide interactive chat capabilities and automated metadata generation:
 
 - **Interactive Chat**: Real-time streaming of AI responses using `generateContentStream`.
 - **Multimodal Support**: Support for image and document uploads, stored in MongoDB GridFS and processed by Gemini 2.0 Flash as base64 `inlineData`.
