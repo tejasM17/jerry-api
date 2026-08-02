@@ -7,20 +7,23 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "dev": "set NODE_ENV=development&& nodemon server.js",
-    "start": "node server.js"
+    "dev": "NODE_ENV=development nodemon server.js",
+    "start": "node server.js",
+    "smoke": "NODE_ENV=development node scripts/smoke-api.js",
+    "test": "node --test \"tests/**/*.test.js\""
   },
   "dependencies": {
+    "@clerk/backend": "^3.15.0",
     "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
-    "firebase-admin": "^13.6.1",
     "mongoose": "^9.6.2",
     "multer": "^2.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
   },
   "keywords": []
 }
