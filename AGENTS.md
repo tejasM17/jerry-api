@@ -4,7 +4,7 @@
 
 ```sh
 npm install
-npm run dev          # dev server (nodemon)
+npm run dev          # NODE_ENV=development + nodemon
 npm start            # production
 ```
 
@@ -12,48 +12,56 @@ npm start            # production
 
 - **Runtime**: Node.js
 - **Framework**: Express.js 5 (CommonJS)
-- **Auth**: Firebase Admin SDK (ID token verification)
+- **Auth**: Clerk (`@clerk/backend` session JWT verification)
 - **AI**: Google Gemini API (`gemini-2.5-flash` default)
-- **Database**: Dual architecture
-  - Firestore: chats & messages
-  - MongoDB + GridFS: file storage
-- **File Uploads**: Multer (memory, 10MB limit)
+- **Database**: MongoDB + Mongoose (`User`, `Chat`, `Message`) + GridFS uploads
+- **File Uploads**: Multer (memory) → GridFS
 - **Dev**: nodemon
 
 ## Setup
 
 1. Copy `.env.example` to `.env.development`
-2. Add required vars:
+2. Required vars:
    ```
    PORT=5000
-   GEMINI_API_KEYS=key1,key2
-   MONGODB_URI=mongodb://localhost:27017/jerry-ai
+   GEMINI_API_KEY=...
+   MONGODB_URI=mongodb://jerry-files:<db_password>@...atlas...
+   MONGODB_PASSWORD=your_atlas_password
    FRONTEND_URL=http://localhost:5173
-   FIREBASE_PROJECT_ID=...
-   FIREBASE_CLIENT_EMAIL=...
-   FIREBASE_PRIVATE_KEY="..."
+   CLERK_SECRET_KEY=sk_test_...
+   CLERK_PUBLISHABLE_KEY=pk_test_...
    ```
 
-## Routes
+## Chat routes
 
 | Method | Path | Notes |
 |--------|------|-------|
-| POST | `/api/chat/new` | Create chat, stream response, returns `X-Chat-Id` |
-| GET | `/api/chat/all` | List user's chats |
-| GET | `/api/chat/recent` | 10 recent chats |
-| GET | `/api/chat/search?q=` | Prefix search titles |
-| GET | `/api/chat/:chatId` | Get messages |
+| POST | `/api/chat/new` | Create chat, stream Gemini, `X-Chat-Id` |
+| GET | `/api/chat/all` | List chats |
+| GET | `/api/chat/recent` | Recent chats |
+| GET | `/api/chat/search?q=` | Title search |
+| GET | `/api/chat/:chatId` | Messages |
 | DELETE | `/api/chat/:chatId` | Delete chat + messages |
-| POST | `/api/chat/:chatId/continue` | Continue chat, stream response |
-| POST | `/api/chat/upload` | Multipart file upload |
-| GET | `/api/chat/files/:fileId` | Stream file from GridFS (unprotected) |
-| PUT | `/api/chat/:chatId/edit/:messageId` | Edit message, regenerate AI response |
-| POST | `/api/auth/register` | Register |
-| POST | `/api/auth/login` | Login |
+| PATCH | `/api/chat/:chatId/rename` | Rename |
+| POST | `/api/chat/:chatId/continue` | Continue + stream |
+| PUT | `/api/chat/:chatId/edit/:messageId` | Edit + re-stream |
+| PATCH | `/api/chat/:chatId/message/:messageId` | Update message |
+| DELETE | `/api/chat/:chatId/message/:messageId` | Delete message |
+| POST | `/api/chat/upload` | GridFS upload |
+| GET | `/api/chat/files/:fileId` | Serve file |
+| GET | `/api/auth/me` | Clerk profile |
+| POST | `/api/auth/sync` | Upsert Mongo user |
 
-## Firestore Schema
+## Frontend contract
+
+1. `Authorization: Bearer ${await getToken()}` on protected calls.
+2. Optionally `POST /api/auth/sync` after login.
+3. Optional JWT claim `userId` = `{{user.external_id || user.id}}` for faster ownership.
+
+## Mongo schema
 
 ```
-chats/{chatId}: userId, title, createdAt, updatedAt
-messages/{messageId}: chatId, userId, role, content, attachments[], createdAt
+chats: userId, title, deletedAt?, createdAt, updatedAt
+messages: chatId, userId, role, content, attachments[], createdAt, updatedAt
+users: uid, clerkId, email, profile fields…
 ```

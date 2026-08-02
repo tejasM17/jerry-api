@@ -1,7 +1,18 @@
 const path = require("path");
+const fs = require("fs");
 const nodeEnv = (process.env.NODE_ENV || "").trim();
-const envFile = nodeEnv === "development" ? ".env.development" : ".env";
-require("dotenv").config({ path: path.resolve(process.cwd(), envFile) });
+// Prefer .env.development in local/dev; fall back so bare `node server.js` still boots.
+const envCandidates =
+  nodeEnv === "development"
+    ? [".env.development", ".env"]
+    : [".env", ".env.development"];
+for (const name of envCandidates) {
+  const full = path.resolve(process.cwd(), name);
+  if (fs.existsSync(full)) {
+    require("dotenv").config({ path: full });
+    break;
+  }
+}
 
 const express = require("express");
 const cors = require("cors");
@@ -9,6 +20,7 @@ const { connectDB } = require("./config/db");
 
 const chatRoutes = require("./routes/chat.routes");
 const authRoutes = require("./routes/auth.routes");
+const profileRoutes = require("./routes/profile.routes");
 
 const app = express();
 
@@ -42,6 +54,13 @@ app.use(
       }
     },
     credentials: true,
+    // Let the SPA read streaming chat session metadata (Grok-style ids)
+    exposedHeaders: [
+      "X-Chat-Id",
+      "X-Session-Id",
+      "X-Request-Id",
+      "X-Chat-Title",
+    ],
   }),
 );
 
@@ -49,13 +68,30 @@ app.use(express.json());
 
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Firebase AI Backend Running");
+  res.send("Jerry API Running");
+});
+
+app.get("/health", (req, res) => {
+  const { isClerkConfigured } = require("./config/clerk");
+  const { isMongoConnected } = require("./config/db");
+  res.json({
+    ok: true,
+    auth: isClerkConfigured() ? "clerk" : "unconfigured",
+    mongo: isMongoConnected() ? "connected" : "disconnected",
+    chatStore: "mongodb",
+    env: nodeEnv || "default",
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
+  const { isClerkConfigured } = require("./config/clerk");
   console.log(`Server running on port ${PORT}`);
+  console.log(
+    `Auth: ${isClerkConfigured() ? "Clerk (JWT verify ready)" : "UNCONFIGURED — set CLERK_SECRET_KEY"}`,
+  );
 });
