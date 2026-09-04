@@ -75,11 +75,10 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  const { isClerkConfigured } = require("./config/clerk");
   const { isMongoConnected } = require("./config/db");
   res.json({
     ok: true,
-    auth: isClerkConfigured() ? "clerk" : "unconfigured",
+    auth: "firebase",
     mongo: isMongoConnected() ? "connected" : "disconnected",
     chatStore: "mongodb",
     env: nodeEnv || "default",
@@ -89,9 +88,7 @@ app.get("/health", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  const { isClerkConfigured } = require("./config/clerk");
+  // Clerk configuration removed; using Firebase auth
   console.log(`Server running on port ${PORT}`);
-  console.log(
-    `Auth: ${isClerkConfigured() ? "Clerk (JWT verify ready)" : "UNCONFIGURED — set CLERK_SECRET_KEY"}`,
-  );
+  console.log('Auth: Firebase (ID token verification)');
 });

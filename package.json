@@ -13,11 +13,11 @@
     "test": "node --test \"tests/**/*.test.js\""
   },
   "dependencies": {
-    "@clerk/backend": "^3.15.0",
     "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "firebase-admin": "^12.7.0",
     "mongoose": "^9.6.2",
     "multer": "^2.1.1"
   },
