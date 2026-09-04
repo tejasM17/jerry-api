@@ -16,6 +16,7 @@ or making any architectural decision:
 
 Update `context/progress-tracker.md` after each
 meaningful implementation change.
+- Added new streaming endpoint `routes/stream.routes.js` and controller `controllers/stream.controller.js` for dedicated LLM streaming.
 
 If implementation changes the architecture, scope, or
 standards documented in the context files, update the

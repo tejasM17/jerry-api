@@ -1,7 +1,7 @@
 "use strict";
 
 const express = require("express");
-const protect = require("../middleware/auth.middleware");
+const protect = require("../middleware/auth.switch");
 const upload = require("../middleware/upload.middleware");
 const {
   getProfile,
@@ -14,7 +14,7 @@ const {
 
 const router = express.Router();
 
-// All profile routes require a valid Clerk session JWT.
+// All profile routes require a valid Firebase ID token.
 router.get("/", protect, getProfile);
 router.put("/", protect, updateProfile);
 router.delete("/", protect, deleteProfile);

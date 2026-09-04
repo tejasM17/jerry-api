@@ -4,10 +4,10 @@ const mongoose = require("mongoose");
 
 /**
  * App user profile (Mongo).
- * Auth identity lives in Clerk; this document stores app-facing profile data.
+ * Auth identity lives in Firebase; this document stores app-facing profile data.
  *
- * uid: ownership key for chats/messages (Clerk externalId || clerk id)
- * clerkId: Clerk user id (user_...)
+ * uid: Firebase uid (ownership key for chats/messages)
+ * clerkId: optional legacy Clerk id (kept for old documents)
  * externalId: optional legacy id when migrated from another auth provider
  */
 const socialLinksSchema = new mongoose.Schema(
@@ -31,8 +31,9 @@ const userSchema = new mongoose.Schema(
     },
     clerkId: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
+      sparse: true,
       trim: true,
       index: true,
     },

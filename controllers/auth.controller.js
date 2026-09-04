@@ -1,115 +1,42 @@
 "use strict";
 
-const { clerkClient } = require("../config/clerk");
 const User = require("../models/User.model");
 
-/**
- * GET /api/auth/me
- * Returns the current Clerk user profile (for frontend bootstrap after login).
- */
+/** GET /api/auth/me – returns basic Firebase-authenticated user info */
 exports.getProfile = async (req, res) => {
   try {
-    const clerkUserId = req.user.clerkId;
-    const user = await clerkClient.users.getUser(clerkUserId);
-
-    const primaryEmail =
-      user.emailAddresses?.find((e) => e.id === user.primaryEmailAddressId)
-        ?.emailAddress ||
-      user.emailAddresses?.[0]?.emailAddress ||
-      null;
-
-    res.json({
-      uid: req.user.uid,
-      clerkId: user.id,
-      externalId: user.externalId || null,
-      email: primaryEmail,
-      displayName:
-        [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-        user.username ||
-        null,
-      firstName: user.firstName || null,
-      lastName: user.lastName || null,
-      username: user.username || null,
-      photoURL: user.imageUrl || null,
-    });
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+    // Optionally fetch from DB for richer profile
+    const dbUser = await User.findOne({ uid });
+    res.json({ uid, email: req.user.email, ...(dbUser || {}) });
   } catch (error) {
     console.error("[auth] getProfile:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
 
-/**
- * POST /api/auth/sync
- * Upsert a lightweight Mongo user profile after Clerk sign-in/sign-up.
- */
+/** POST /api/auth/sync – upserts a user profile using Firebase uid */
 exports.syncUser = async (req, res) => {
   try {
-    const clerkUserId = req.user.clerkId;
-    const appUserId = req.user.uid;
-
-    const clerkUser = await clerkClient.users.getUser(clerkUserId);
-    const primaryEmail =
-      clerkUser.emailAddresses?.find(
-        (e) => e.id === clerkUser.primaryEmailAddressId,
-      )?.emailAddress ||
-      clerkUser.emailAddresses?.[0]?.emailAddress ||
-      req.body?.email ||
-      null;
-
-    const username =
-      req.body?.username ||
-      clerkUser.username ||
-      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
-      (primaryEmail ? primaryEmail.split("@")[0] : "user");
-
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ message: "Unauthenticated" });
+    const email = req.user.email || `${uid}@users.noreply.firebase`;
+    const displayName = req.user.displayName || email.split("@")[0];
+    const photoURL = req.user.photoURL || null;
     const update = {
-      clerkId: clerkUserId,
-      externalId: clerkUser.externalId || null,
-      email: primaryEmail,
-      username,
-      photoURL: clerkUser.imageUrl || null,
+      uid,
+      email,
+      username: displayName,
+      fullName: displayName,
+      photoURL,
     };
-
-    if (!primaryEmail) {
-      return res.status(400).json({
-        message: "Clerk user has no email; cannot sync profile",
-      });
-    }
-
-    const orQuery = [{ clerkId: clerkUserId }, { uid: appUserId }];
-    if (primaryEmail) orQuery.push({ email: primaryEmail });
-
-    let user = null;
-    try {
-      user = await User.findOneAndUpdate(
-        { $or: orQuery },
-        {
-          $set: update,
-          $setOnInsert: { uid: appUserId },
-        },
-        { upsert: true, new: true, runValidators: true },
-      );
-    } catch (mongoErr) {
-      console.warn("[auth] syncUser mongo skipped:", mongoErr.message);
-      return res.json({
-        uid: appUserId,
-        clerkId: clerkUserId,
-        externalId: clerkUser.externalId || null,
-        email: primaryEmail,
-        username,
-        photoURL: clerkUser.imageUrl || null,
-        mongo: false,
-      });
-    }
-
-    res.json({
-      uid: user.uid,
-      clerkId: user.clerkId,
-      externalId: user.externalId,
-      email: user.email,
-      username: user.username,
-      photoURL: user.photoURL,
-    });
+    const user = await User.findOneAndUpdate(
+      { uid },
+      { $set: update, $setOnInsert: { clerkId: `firebase:${uid}` } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    res.json(user);
   } catch (error) {
     console.error("[auth] syncUser:", error.message);
     res.status(500).json({ message: error.message });
