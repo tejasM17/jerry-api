@@ -12,7 +12,7 @@ npm start            # production
 
 - **Runtime**: Node.js
 - **Framework**: Express.js 5 (CommonJS)
-- **Auth**: Clerk (`@clerk/backend` session JWT verification)
+- **Auth**: Firebase Admin (ID token verification)
 - **AI**: Google Gemini API (`gemini-2.5-flash` default)
 - **Database**: MongoDB + Mongoose (`User`, `Chat`, `Message`) + GridFS uploads
 - **File Uploads**: Multer (memory) → GridFS
@@ -28,8 +28,9 @@ npm start            # production
    MONGODB_URI=mongodb://jerry-files:<db_password>@...atlas...
    MONGODB_PASSWORD=your_atlas_password
    FRONTEND_URL=http://localhost:5173
-   CLERK_SECRET_KEY=sk_test_...
-   CLERK_PUBLISHABLE_KEY=pk_test_...
+   FIREBASE_PROJECT_ID=...
+   FIREBASE_CLIENT_EMAIL=...
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
    ```
 
 ## Chat routes
@@ -49,7 +50,7 @@ npm start            # production
 | DELETE | `/api/chat/:chatId/message/:messageId` | Delete message |
 | POST | `/api/chat/upload` | GridFS upload |
 | GET | `/api/chat/files/:fileId` | Serve file |
-| GET | `/api/auth/me` | Clerk profile |
+| GET | `/api/auth/me` | Firebase profile |
 | POST | `/api/auth/sync` | Upsert Mongo user |
 
 ## Frontend contract

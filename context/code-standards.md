@@ -35,7 +35,7 @@
 
 ## Auth and Access Model
 
-- Verify Clerk session JWTs in `auth.middleware.js` using `@clerk/backend` (`verifyToken` + `CLERK_SECRET_KEY`).
+- Verify Firebase ID tokens in `auth.middleware.js` using `firebase-admin` (`verifyIdToken`).
 - Attach `req.user.uid` (prefer Clerk `externalId` / claim `userId` for migrated users) for ownership checks.
 - Do not implement email/password login on the API; Clerk owns sign-in on the frontend.
 - Services enforce ownership checks to ensure users can only access their own resources.
