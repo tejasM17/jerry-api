@@ -2,7 +2,7 @@
 
 const express = require("express");
 const router = express.Router();
-const protect = require("../middleware/auth.middleware");
+const protect = require("../middleware/auth.switch");
 const requireMongo = require("../middleware/mongo.middleware");
 const upload = require("../middleware/upload.middleware");
 const {

@@ -9,7 +9,7 @@ function requireMongo(req, res, next) {
   if (!isMongoConnected()) {
     return res.status(503).json({
       message:
-        "Database unavailable. Set MONGODB_PASSWORD (or a full MONGODB_URI) and restart the API.",
+        "Database unavailable. Set MONGODB_URI on the API host and restart the service.",
       mongo: "disconnected",
     });
   }

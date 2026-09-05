@@ -7,7 +7,7 @@
  *
  * Strategy:
  *   - Use Node's built-in `node:test` + `supertest`.
- *   - Avoid real Clerk, real Mongo, real Gemini by pre-seeding
+ *   - Avoid real Firebase, real Mongo, real Gemini by pre-seeding
  *     `require.cache` with lightweight stubs BEFORE the router,
  *     models, and middleware modules are loaded.
  *   - Build a minimal Express app, mount the real `routes/chat.routes.js`,
@@ -136,12 +136,23 @@ const geminiStub = {
   },
 };
 
-// --- Stub @clerk/backend (token verify) -----------------------------------
-const clerkStub = {
-  verifyToken: async (_token) => ({ sub: TEST_USER_ID, sid: "sess_test" }),
-  createClerkClient: () => ({
-    users: { getUser: async () => ({ externalId: null }) },
+// --- Stub firebase-admin (ID token verify) --------------------------------
+const firebaseAdminStub = {
+  apps: [{}],
+  initializeApp() {},
+  credential: { cert: () => ({}) },
+  auth: () => ({
+    verifyIdToken: async (token) => {
+      if (!token) throw new Error("No token provided");
+      return {
+        uid: TEST_USER_ID,
+        email: "test@example.com",
+        name: "Test User",
+        picture: null,
+      };
+    },
   }),
+  isFirebaseConfigured: () => true,
 };
 
 // --- Stub mongoose --------------------------------------------------------
@@ -381,18 +392,12 @@ function inject(name, exports) {
 }
 
 inject("@google/generative-ai", geminiStub);
-inject("@clerk/backend", clerkStub);
+inject("firebase-admin", firebaseAdminStub);
 inject("mongoose", makeFakeMongoose());
 inject(path.resolve(__dirname, "..", "config/db.js"), fakeDb);
-inject(path.resolve(__dirname, "..", "config/clerk.js"), {
-  clerkClient: clerkStub.createClerkClient(),
-  getClerkSecretKey: () => "test_clerk_secret",
-  getClerkPublishableKey: () => "test_clerk_pub",
-  isClerkConfigured: () => true,
-});
+inject(path.resolve(__dirname, "..", "config/firebase.js"), firebaseAdminStub);
 
-// Real auth middleware requires the stubbed clerk. Load it now.
-const protect = require("../middleware/auth.middleware");
+require("../middleware/auth.middleware");
 
 // --- Build a minimal app for testing --------------------------------------
 const express = require("express");
@@ -403,9 +408,7 @@ function buildApp() {
   const app = express();
   app.use(express.json());
 
-  // Override protect to bypass real Clerk and inject a fake user.
-  // We can't easily unregister a route-level middleware from chatRoutes, but
-  // since we injected the @clerk/backend stub, verifyToken resolves fine.
+  // Firebase ID token verification is stubbed via firebase-admin.
   app.use("/api/chat", chatRoutes);
   return app;
 }
@@ -446,7 +449,7 @@ test("GET /api/chat/all without Authorization header returns 401", async () => {
   assert.equal(res.status, 401);
 });
 
-test("GET /api/chat/all with mocked Clerk + Mongo returns 200 JSON", async () => {
+test("GET /api/chat/all with mocked Firebase + Mongo returns 200 JSON", async () => {
   // Seed a chat so listChats has something to return.
   fakeChatCreate({ userId: TEST_USER_ID, title: "Hello" });
 

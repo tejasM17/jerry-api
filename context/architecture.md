@@ -5,7 +5,7 @@
 | Layer      | Technology                                 | Role |
 |------------|--------------------------------------------|------|
 | Runtime    | Node.js (v18+) + Express 5                 | Backend HTTP server and routing |
-| Auth       | Clerk (`@clerk/backend`)                   | Verify session JWTs for API requests; identity source of truth |
+| Auth       | Firebase Admin                             | Verify ID tokens for API requests; identity source of truth |
 | Database   | MongoDB (via Mongoose)                     | Users, chats, messages; GridFS for file blobs |
 | AI Service | Google Gemini API                          | Streams AI responses for chat endpoints |
 | Config     | `.env` / `.env.development` + `config/`    | DB URIs, API keys, service credentials |

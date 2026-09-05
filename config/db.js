@@ -13,7 +13,11 @@ function resolveMongoUri() {
   let uri = process.env.MONGODB_URI;
   if (!uri) return null;
 
-  const password = process.env.MONGODB_PASSWORD;
+  // Render / dashboard env often includes wrapping quotes or trailing whitespace.
+  uri = String(uri).trim().replace(/^['"]|['"]$/g, "");
+  if (!uri) return null;
+
+  const password = (process.env.MONGODB_PASSWORD || "").trim();
   if (password && uri.includes("<db_password>")) {
     uri = uri.replace("<db_password>", encodeURIComponent(password));
   }
@@ -60,11 +64,23 @@ const connectDB = async () => {
 
   try {
     mongoose.set("strictQuery", true);
+
+    mongoose.connection.on("connected", () => {
+      connected = true;
+    });
+    mongoose.connection.on("disconnected", () => {
+      connected = false;
+    });
+    mongoose.connection.on("error", (err) => {
+      connected = mongoose.connection.readyState === 1;
+      console.error(`MongoDB connection error: ${err.message}`);
+    });
+
     const conn = await mongoose.connect(uri, {
       // Prefer low-latency pool for chat list / message loads
       maxPoolSize: 20,
       minPoolSize: 2,
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
     });
     connected = true;

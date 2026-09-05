@@ -11,7 +11,7 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
 - **System Instructions**: Customizable AI personality and behavior via a centralized system prompt.
 - **Authentication**: Managed via **Firebase Auth**.
 - **Streaming Responses**: Real-time text streaming for better UX.
-- **Cloud Storage**: Chat history in **Firestore** and files in **MongoDB GridFS**.
+- **Cloud Storage**: Chat history in **MongoDB** and files in **MongoDB GridFS**.
 
 ## Prerequisites
 - [Node.js](https://nodejs.org/) (v18 or higher recommended)
@@ -42,8 +42,6 @@ This is the backend server for Jerry AI, a chatbot powered by Google Gemini and 
    FRONTEND_URL=http://localhost:5173
    MONGODB_URI=mongodb://localhost:27017/jerry-ai
 
-   # Firebase Configuration
-   FIREBASE_API_KEY=your_firebase_api_key
    FIREBASE_PROJECT_ID=your_firebase_project_id
    FIREBASE_CLIENT_EMAIL=your_firebase_client_email
    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n"

@@ -8,7 +8,7 @@ Keep this file short. Read feature specs + code for detail.
 - **Chat store migration** — `Chat` + `Message` models, `services/chat.service.js`, controllers/routes rewritten.
 - **Session URLs (Grok-style)** — public `sessionId` UUID on chats; `requestId` on turns; routes resolve UUID or legacy ObjectId; `POST /api/chat/session`; stream headers `X-Session-Id` / `X-Request-Id`.
 - **Latency** — local titles, stream headers early, auth ownership cache, lean list queries.
-- **Auth** — Firebase Admin initializes from `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` in `.env.development` so local ID token verification does not hit `metadata.google.internal`. Clerk JWT still present behind `USE_FIREBASE_AUTH`.
+- **Auth** — Firebase Admin from `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY`. Production CORS uses `FRONTEND_URL` (no throw on reject). Private key PEM `\n` + quote stripping for Render.
 - **Observability** — per-request logger middleware on chat router (`[chat] METHOD path → status ms`); `withRetry` logs non-retryable Gemini failures with key index, status, and a diagnostic hint (no key material). Fallback assistant message is persisted so the conversation stays consistent on reload.
 - **Tests** — `node:test` + `supertest` at `tests/chat.routes.test.js` (19/19 passing); covers auth, gating, streaming happy path, the Gemini-failure fallback path, `editMessage` (PUT) + `updateMessage` (PATCH) routes end-to-end, and `X-User-Message-Id` header on `/chat/new` + `/chat/:chatId/continue`.
 
@@ -17,10 +17,10 @@ Keep this file short. Read feature specs + code for detail.
 | Layer | Tech |
 | --- | --- |
 | App | Node.js + Express 5 |
-| Auth | Clerk |
+| Auth | Firebase Admin (ID tokens) |
 | Data | MongoDB Mongoose (`User`, `Chat`, `Message`) + GridFS |
 | AI | Google Gemini stream |
-| CORS | `FRONTEND_URL` + localhost; `exposedHeaders: X-Chat-Id, X-Chat-Title` |
+| CORS | `FRONTEND_URL` + `CORS_ORIGINS` + localhost; no 500 on reject |
 
 ## API map (chat)
 
