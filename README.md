@@ -2,9 +2,7 @@
 
 This is the backend server for Jerry AI, a chatbot powered by Google Gemini and Firebase.
 
-## It is hybrid repo [frontend](gitHub.com/tejasM17/jerry) repo is 
-
-
+It is hybrid repository here is [frontend](gitHub.com/tejasM17/jerry) repo. 
 
 ## Features
 - AI-powered chat using **Gemini 2.0 Flash**.
