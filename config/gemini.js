@@ -40,7 +40,7 @@ function getModel() {
   const apiKey = getNextKey();
   const genAI = new GoogleGenerativeAI(apiKey);
   return genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || "gemini-3.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   });
 }
 
@@ -86,32 +86,32 @@ async function withRetry(fn) {
       return await fn(model);
     } catch (error) {
       lastError = error;
-      const isRateLimit =
-        error.message?.includes("429") || error.status === 429;
+
+      // Always log the full error for visibility.
+      console.error("[gemini] attempt failed (key index " + attemptIndex + "):", error);
+
+      const status = error?.status || error?.response?.status;
+      const isRateLimit = status === 429 || /429/.test(error?.message || "");
       const isTransient =
-        error.message?.includes("500") || error.message?.includes("503");
+        status === 500 ||
+        status === 503 ||
+        /500|503/.test(error?.message || "");
 
       if (isRateLimit || isTransient) {
+        // Retryable error – log a concise hint and continue with next key.
+        const hint = diagnoseGeminiError(error);
         console.warn(
-          `[gemini] key[${attemptIndex}] failed (${error.status || "?"}): ${error.message?.slice(0, 120)} — retrying with next key`,
+          `[gemini] retryable error (key[${attemptIndex}]): ${hint} — retrying`,
         );
         continue;
       }
 
-      // Non-retryable: log once with full context, then surface.
-      console.error("[gemini] request failed (non-retryable):", {
-        keyIndex: attemptIndex,
-        keysTotal: list.length,
-        status: error.status || error?.response?.status || null,
-        hint: diagnoseGeminiError(error),
-        message: String(error.message || "").slice(0, 300),
-        stack: error.stack?.split("\n").slice(0, 4).join("\n"),
-      });
+      // Non-retryable error – surface after logging.
       throw error;
     }
   }
 
-  // All retries exhausted — surface the last error with a hint.
+  // All retries exhausted – surface the last error with a hint.
   console.error("[gemini] all retries exhausted:", {
     keysTotal: list.length,
     status: lastError?.status || null,

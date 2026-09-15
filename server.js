@@ -106,16 +106,34 @@ app.get("/", (req, res) => {
   res.send("Jerry API Running");
 });
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
   const { isMongoConnected } = require("./config/db");
   const { isFirebaseConfigured } = require("./config/firebase");
+  const { withRetry } = require("./config/gemini");
+
+  // Determine Gemini connectivity status.
+  let geminiStatus = "missing-env";
+  // If a key is configured, attempt a minimal Gemini call.
+  if (process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS) {
+    try {
+      await withRetry(async (model) => {
+        // Minimal non‑streaming request; any response indicates the key works.
+        await model.generateContent("ping");
+      });
+      geminiStatus = "ok";
+    } catch (err) {
+      console.error("[health] Gemini health check failed:", err);
+      geminiStatus = "error";
+    }
+  }
+
   res.json({
     ok: true,
     auth: "firebase",
     firebase: isFirebaseConfigured() ? "configured" : "missing-env",
     mongo: isMongoConnected() ? "connected" : "disconnected",
     chatStore: "mongodb",
-    gemini: process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS ? "configured" : "missing-env",
+    gemini: geminiStatus,
     env: nodeEnv || "default",
   });
 });

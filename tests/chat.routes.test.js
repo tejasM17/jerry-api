@@ -124,6 +124,12 @@ const fakeGenerativeModel = {
     }
     return { stream: gen() };
   },
+  // Simple non‑streaming content generation used by health checks.
+  generateContent: async (prompt) => ({
+    response: {
+      text: () => "pong",
+    },
+  }),
 };
 
 const fakeGenAi = {
