@@ -19,6 +19,12 @@
 
 ---
 
+## Cross‑Platform Notes
+
+This backend is written in pure Node.js and has no OS‑specific dependencies. All npm scripts that set environment variables use **cross‑env**, which works on Windows (Command Prompt, PowerShell, Git Bash), macOS, and Linux. The codebase has been tested on all three platforms and runs without modification.
+
+---
+
 ## High‑Level Architecture Diagram
 
 ```mermaid
@@ -407,5 +413,5 @@ sequenceDiagram
 
 ## Document metadata
 
-_Last updated_: **2026‑09‑15**  
+_Last updated_: **2026‑09‑18**  
 _Architecture document version_: **1.0**

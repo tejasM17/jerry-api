@@ -1,191 +1,111 @@
 # Jerry AI Backend
 
-This is the backend server for Jerry AI, a chatbot powered by Google Gemini and Firebase.
+## Overview
+Jerry AI Backend is a pure Node.js RESTful API that powers the Jerry AI chatbot. It provides Firebase ID‑token based authentication, stores chat history and uploaded files in MongoDB (using GridFS), and generates AI responses via Google Gemini. The code runs unchanged on Windows, macOS, and Linux.
 
-It is hybrid repository here is [frontend](gitHub.com/tejasM17/jerry) repo. 
+**Frontend repository:** https://github.com/tejasM17/jerry
 
 ## Features
-- AI-powered chat using **Gemini 2.0 Flash**.
-- **Multimodal Support**: Upload images and documents to chat.
-- **Auto-Title Generation**: Automatically generates a concise 4-word title for each new chat session.
-- **Message Editing**: Edit previous prompts and re-generate AI responses (with history branching).
-- **Reliability & Rotation**: Supports multiple Gemini API keys with automatic rotation and retry logic for high availability.
-- **System Instructions**: Customizable AI personality and behavior via a centralized system prompt.
-- **Authentication**: Managed via **Firebase Auth**.
-- **Streaming Responses**: Real-time text streaming for better UX.
-- **Cloud Storage**: Chat history in **MongoDB** and files in **MongoDB GridFS**.
+- AI‑powered chat using **Gemini 2.0 Flash**.
+- **Multimodal support** – upload images and documents to chat.
+- **Auto‑title generation** – creates concise titles for new chat sessions.
+- **Message editing** – edit previous prompts and re‑generate AI responses with history branching.
+- **Reliability & rotation** – automatic Gemini API‑key rotation and retry logic for high availability.
+- **System instructions** – customizable AI personality via a central system prompt.
+- **Authentication** – Firebase ID‑token based auth.
+- **Streaming responses** – real‑time text streaming for a responsive UI.
+- **Cloud storage** – chat history in **MongoDB** and files in **MongoDB GridFS**.
 
 ## Prerequisites
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- [Firebase Project](https://console.firebase.google.com/) (for Firestore and Auth)
-- [MongoDB](https://www.mongodb.com/) (for GridFS file storage)
-- [Gemini API Key](https://aistudio.google.com/app/apikey)
 
-## Setup Instructions
+| Tool | Minimum version | Install guide |
+|------|------------------|---------------|
+| Node.js | 18.x or newer | Windows: `choco install nodejs`; macOS: `brew install node`; Linux: use distro package manager or `nvm` |
+| MongoDB | 4.4+ (or Atlas) | Follow MongoDB's official installation docs |
+| Firebase project | – | Create a project in the Firebase console and enable Authentication & Firestore |
+| Gemini API key | – | Obtain a key from Google AI Studio (Gemini) |
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd jerry-api
-   ```
+## Installing Node (cross‑platform)
+- **Windows**: Download the Windows Installer from https://nodejs.org/ or run `choco install nodejs`.
+- **macOS**: `brew install node` (requires Homebrew) or use the macOS installer.
+- **Linux**: `sudo apt-get install -y nodejs npm` (Debian/Ubuntu) or install via `nvm`.
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+## Setup
+```bash
+# 1️⃣ Clone the repository
+git clone https://github.com/tejasM17/jerry-api.git
+cd jerry-api
 
-3. **Environment Configuration:**
-   Create a `.env.development` file in the root directory and add your credentials:
-   ```env
-   PORT=5000
-   GEMINI_API_KEYS=key1,key2,key3 (Comma separated for rotation and failover)
-   # OR
-   GEMINI_API_KEY=your_single_key
-   FRONTEND_URL=http://localhost:5173
-   MONGODB_URI=mongodb://localhost:27017/jerry-ai
+# 2️⃣ Install npm dependencies
+npm install
 
-   FIREBASE_PROJECT_ID=your_firebase_project_id
-   FIREBASE_CLIENT_EMAIL=your_firebase_client_email
-   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n"
-   ```
+# 3️⃣ Copy the example environment file
+# Bash / sh
+cp .env.example .env.development
+# PowerShell (Windows)
+Copy-Item .env.example .env.development
+```
+Edit `.env.development` and fill in the required variables (see the table below).
 
-4. **Run the server:**
-   - For development:
-     ```bash
-     npm run dev
-     ```
-   - For production:
-     ```bash
-     npm start
-     ```
+```bash
+# start the server in development mode (cross‑env handles NODE_ENV on all OSes)
+npm run dev
 
-## API Endpoints
+# start the server in production mode
+npm start
+```
 
-### Auth
-All auth endpoints are prefixed with `/api/auth`.
+## Environment variables
+| Variable | Required? | Description |
+|---|---|---|
+| `PORT` | No (default `5000`) | Port on which the API listens |
+| `GEMINI_API_KEY` | Yes (or `GEMINI_API_KEYS`) | Gemini API key (single) |
+| `GEMINI_API_KEYS` | Optional | Comma‑separated list for rotation |
+| `GEMINI_MODEL` | No (default `gemini-3.5-flash`) | Gemini model name |
+| `FRONTEND_URL` | No | Front‑end origin for CORS whitelist |
+| `CORS_ORIGINS` | Optional | Additional comma‑separated origins |
+| `ALLOW_VERCEL_PREVIEWS` | Optional (`false`) | Allow any `*.vercel.app` origin |
+| `MONGODB_URI` | Yes | MongoDB connection string |
+| `MONGODB_PASSWORD` | Optional | Password to replace `<db_password>` placeholder |
+| `MONGODB_DB_NAME` | Optional (`jerry`) | Database name if not present in URI |
+| `FIREBASE_PROJECT_ID` | Yes | Firebase project identifier |
+| `FIREBASE_CLIENT_EMAIL` | Yes | Service‑account client email |
+| `FIREBASE_PRIVATE_KEY` | Yes | PEM‑encoded private key (escaped new‑lines) |
+| `NODE_ENV` | No | Set to `development` when running `npm run dev` |
 
-- **POST `/register`** - Register a new user.
-  - **Body:**
-    ```json
-    {
-      "username": "johndoe",
-      "email": "john@example.com",
-      "password": "securepassword"
-    }
-    ```
-  - **Response:** (201 Created) Returns user details and token.
+## Platform‑specific notes
+- **Windows PowerShell**: Use `Copy-Item` for copying the env file; `cross‑env` works in PowerShell without extra configuration.
+- **macOS**: Homebrew is the simplest way to manage Node and related tools.
+- **Linux**: If you use `nvm`, run `nvm use 18` before `npm install`.
 
-- **POST `/login`** - Login a user.
-  - **Body:**
-    ```json
-    {
-      "email": "john@example.com",
-      "password": "securepassword"
-    }
-    ```
-  - **Response:** (200 OK) Returns user details and token.
+## Useful npm scripts
+| Script | Purpose |
+|--------|---------|
+| `dev` | Runs the server with hot‑reloading (`cross‑env NODE_ENV=development nodemon server.js`). |
+| `start` | Starts the compiled server in production (`node server.js`). |
+| `smoke` | Executes a lightweight smoke test (`cross‑env NODE_ENV=development node scripts/smoke-api.js`). |
+| `test` | Runs the test suite using Node’s built‑in test runner. |
 
-### Chat
-All chat endpoints are prefixed with `/api/chat` and require a **Firebase ID Token** in the `Authorization` header.
+## Health‑check endpoint
+- `GET /health` – Returns a JSON status object reporting the health of the Express server, MongoDB connection, Firebase configuration, and Gemini client.
 
-- **POST `/new`** - Start a new chat and stream response.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Body:**
-    ```json
-    {
-      "prompt": "Hello, how are you?",
-      "attachments": [
-        { "fileId": "65f...", "mimeType": "image/jpeg" }
-      ]
-    }
-    ```
-  - **Response:** (200 OK) Streamed text chunks. 
-  - **Headers (Response):** Returns `X-Chat-Id` which should be used for subsequent `/continue` or `/edit` calls.
+## API overview
+The full API specification is in **Architecture-Backend-API.md**. Key route groups:
+- **Auth** – `/api/auth/me`, `/api/auth/sync`
+- **Profile** – `/api/profile/*`
+- **Chat** – `/api/chat/*` (create, continue, edit, upload files, list, delete, etc.)
 
-- **POST `/upload`** - Upload a file to MongoDB GridFS.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Body:** `multipart/form-data` with key `file`.
-  - **Limit:** Max file size 10MB.
-  - **Response:** (200 OK)
-    ```json
-    {
-      "fileId": "65f...",
-      "url": "/api/chat/files/65f...",
-      "mimeType": "image/png",
-      "name": "example.png"
-    }
-    ```
+## Technologies used
+- **Node.js** (≥ 18) – runtime
+- **Express 5** – HTTP server & routing
+- **MongoDB + GridFS** – persistent chat storage & file storage
+- **Firebase Admin SDK** – authentication & user profile sync
+- **Google Gemini** (`@google/generative-ai`) – AI generation
+- **Multer** – file uploads
+- **Cors** – CORS handling
+- **dotenv** – environment‑variable loading
 
-- **GET `/files/:fileId`** - Stream a file from MongoDB GridFS.
-  - **Response:** (200 OK) File stream (image, pdf, etc.).
+## License
+MIT © 2024–2026 Tejas
 
-- **PUT `/:chatId/edit/:messageId`** - Edit a message and re-generate AI response.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Body:**
-    ```json
-    {
-      "prompt": "Updated prompt",
-      "attachments": []
-    }
-    ```
-  - **Response:** (200 OK) Streamed text chunks. Note: Deletes all messages in the chat that occurred after the edited message.
-
-- **GET `/all`** - Get all chats for the authenticated user.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Response:** (200 OK)
-    ```json
-    [
-      {
-        "id": "chat_id_1",
-        "title": "Greeting",
-        "createdAt": "...",
-        "updatedAt": "..."
-      }
-    ]
-    ```
-
-- **GET `/:chatId`** - Get messages for a specific chat.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Response:** (200 OK)
-    ```json
-    [
-      {
-        "id": "msg_id_1",
-        "role": "user",
-        "content": "Hello",
-        "attachments": [],
-        "createdAt": "..."
-      },
-      {
-        "id": "msg_id_2",
-        "role": "assistant",
-        "content": "Hi there!",
-        "createdAt": "..."
-      }
-    ]
-    ```
-
-- **DELETE `/:chatId`** - Delete a chat and its history.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Response:** (200 OK) `{ "message": "Chat deleted" }`
-
-- **POST `/:chatId/continue`** - Continue an existing chat.
-  - **Headers:** `Authorization: Bearer <ID_TOKEN>`
-  - **Body:**
-    ```json
-    {
-      "prompt": "Tell me more.",
-      "attachments": []
-    }
-    ```
-  - **Response:** (200 OK) Streamed text chunks.
-
-## Technologies Used
-- Express.js
-- MongoDB & GridFS
-- Firebase Admin SDK (Firestore & Auth)
-- Google Generative AI (@google/generative-ai)
-- Multer (File Uploads)
-- Mongoose
-- Cors
-- Dotenv
+_Last updated_: **2026‑09‑18**
